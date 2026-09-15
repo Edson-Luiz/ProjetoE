@@ -1,0 +1,114 @@
+name: DevSecOps CI Pipeline
+
+# Disparadores (Triggers)
+# Em ambiente corporativo, a esteira roda em Pull Requests para bloquear merge de código inseguro,
+# e na branch principal (main) para garantir que a baseline continue segura.
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# Concurrency: Cancela execuções anteriores se novos commits forem enviados no mesmo PR (economia de custos/runners)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Princípio do Menor Privilégio (Least Privilege):
+# O token padrão GITHUB_TOKEN tem apenas leitura por padrão.
+permissions:
+  contents: read
+  security-events: write # Necessário se for subir relatórios SARIF para a aba de Segurança do GitHub
+
+jobs:
+  # =========================================================================
+  # 1. SECRET SCANNING: Previne vazamento de credenciais, API keys e tokens
+  # Ferramenta de mercado: Gitleaks
+  # =========================================================================
+  secret-scan:
+    name: "🛡️ Secret Scanning (Gitleaks)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código com histórico completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Gitleaks precisa ver o histórico de commits para detectar segredos antigos
+
+      - name: Executar Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_SUMMARY: true
+
+  # =========================================================================
+  # 2. SAST (Static Application Security Testing): Analisa o código-fonte
+  # Ferramenta de mercado: Semgrep (Open Source e amplamente usado em Big Techs)
+  # =========================================================================
+  sast-scan:
+    name: "🔍 SAST (Semgrep)"
+    runs-on: ubuntu-latest
+    needs: [secret-scan] # Só executa se não houver vazamento de segredos
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Executar Semgrep com regras OWASP Top 10 e Node.js
+        run: |
+          # Rodamos o container oficial do Semgrep
+          docker run --rm -v "${{ github.workspace }}:/src" returntocorp/semgrep semgrep scan \
+            --config "p/owasp-top-ten" \
+            --config "p/javascript" \
+            --sarif --output=/src/semgrep-results.sarif || true
+        # Nota: Deixamos '|| true' aqui para não bloquear o laboratório de início, 
+        # mas em produção corporativa retiramos para agir como Quality Gate!
+
+      - name: Upload SARIF para GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+        continue-on-error: true # Permite continuar mesmo em repositórios sem GitHub Advanced Security
+
+  # =========================================================================
+  # 3. SCA (Software Composition Analysis): Analisa dependências e CVEs
+  # Ferramenta de mercado: Trivy (Aqua Security)
+  # =========================================================================
+  sca-scan:
+    name: "📦 SCA & Dependency Scan (Trivy)"
+    runs-on: ubuntu-latest
+    needs: [secret-scan]
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Executar Trivy no Sistema de Arquivos (package-lock.json)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0' # Em produção: mude para '1' para quebrar a esteira se achar falha CRÍTICA!
+
+  # =========================================================================
+  # 4. TESTES E BUILD (CI Tradicional)
+  # =========================================================================
+  build-and-test:
+    name: "⚙️ Build & Tests"
+    runs-on: ubuntu-latest
+    needs: [sast-scan, sca-scan]
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar Dependências
+        run: npm ci
+
+      - name: Executar Testes Unitários
+        run: npm test

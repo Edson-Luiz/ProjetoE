@@ -1,0 +1,14 @@
+{
+  "name": "projetoe-devsecops",
+  "version": "1.0.0",
+  "description": "Lab pratico de DevSecOps e CI/CD com GitHub Actions",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "lodash": "4.17.20"
+  }
+}
