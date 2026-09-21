@@ -42,7 +42,7 @@ jobs:
 ---
 
 ## 🚀 Próximos Passos do Laboratório
-- [ ] Subir para um repositório no GitHub para ver os jobs executando na nuvem.
+- [x] Subir para um repositório no GitHub para ver os jobs executando na nuvem.
 - [ ] Fase 2: Criar o **Dockerfile** com boas práticas corporativas (multi-stage + non-root).
 - [ ] Adicionar **Hadolint** (linter de Dockerfile) e **Trivy Image Scan** na pipeline.
 - [ ] Fase 3: Introduzir DAST com **OWASP ZAP** rodando contra o container ativo.
