@@ -58,7 +58,7 @@ jobs:
           docker run --rm -v "${{ github.workspace }}:/src" returntocorp/semgrep semgrep scan \
             --config "p/owasp-top-ten" \
             --config "p/javascript" \
-            --sarif --output=/src/semgrep-results.sarif || true
+            --sarif --output=/src/semgrep-results.sarif
         # Nota: Deixamos '|| true' aqui para não bloquear o laboratório de início, 
         # mas em produção corporativa retiramos para agir como Quality Gate!
 
