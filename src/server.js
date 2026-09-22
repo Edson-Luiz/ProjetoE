@@ -1,6 +1,6 @@
 const express = require('express');
 const _ = require('lodash');
-const { exec } = require('child_process');
+const { execFile } = require('child_process')
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,7 +36,7 @@ app.get('/api/tools/ping', (req, res) => {
 
   // VULNERABILIDADE: Concatenação direta de input do usuário no comando do shell
   // Semgrep irá alertar: "Possible command injection"
-  exec(`ping -c 1 ${host}`, (err, stdout, stderr) => {
+  execFile('ping', ['-c', '1', host], (err, stdout, stderr) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
