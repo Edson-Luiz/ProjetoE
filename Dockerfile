@@ -1,5 +1,5 @@
-# VULNERABILIDADE: Imagem base antiga e sem atualizações de segurança
-FROM node:16
+# Imagem base atualizada e mais leve (Alpine)
+FROM node:20-alpine
 
 WORKDIR /app
 
