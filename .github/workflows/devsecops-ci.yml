@@ -19,6 +19,7 @@ concurrency:
 permissions:
   contents: read
   security-events: write # Necessário se for subir relatórios SARIF para a aba de Segurança do GitHub
+  issues: write # Necessário para o OWASP ZAP reportar os resultados criando uma Issue
 
 jobs:
   # =========================================================================
